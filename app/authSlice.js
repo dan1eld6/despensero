@@ -28,12 +28,14 @@ export const login = createAsyncThunk(
     async ({ email, password }, { rejectWithValue }) => {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const user = {
-                uid: userCredential.user.uid,
+            const uid = userCredential.user.uid;
+            const productos = await fetchUserProducts(uid);
+
+            return {
+                uid,
                 email: userCredential.user.email,
+                productos, // datos serializables
             };
-            await AsyncStorage.setItem('user', JSON.stringify(user));
-            return user;
         } catch (error) {
             return rejectWithValue(error.message);
         }

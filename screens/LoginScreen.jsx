@@ -7,7 +7,7 @@ import { login, register, loadUserFromStorage } from '../app/authSlice';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegisterMode, setIsRegisterMode] = useState(false); // Alternar login/registro
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
 
   const dispatch = useDispatch();
   const { user, loading, error } = useSelector(state => state.auth);
@@ -17,12 +17,11 @@ export default function LoginScreen() {
     dispatch(loadUserFromStorage());
   }, [dispatch]);
 
-  // Si ya hay usuario logueado, podés redirigir a otra pantalla
+  // Si ya hay usuario logueado, redirigir
   useEffect(() => {
     if (user) {
       console.log('Usuario logueado:', user);
-      // Aquí podés navegar a otra pantalla, ej:
-      // navigation.replace('HomeScreen');
+
     }
   }, [user]);
 
