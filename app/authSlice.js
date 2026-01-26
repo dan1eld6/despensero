@@ -1,114 +1,94 @@
-// app/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { auth } from '../firebase/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  pushAllLocalDataToCloud,
+  pullAllCloudDataToLocal,
+} from '../services/cloudSync';
 
-// Registrar usuario
+/* ---------- REGISTER ---------- */
 export const register = createAsyncThunk(
-    'auth/register',
-    async ({ email, password }, { rejectWithValue }) => {
-        try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = {
-                uid: userCredential.user.uid,
-                email: userCredential.user.email,
-            };
-            await AsyncStorage.setItem('user', JSON.stringify(user));
-            return user;
-        } catch (error) {
-            return rejectWithValue(error.message);
-        }
+  'auth/register',
+  async ({ email, password }, { rejectWithValue }) => {
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      const user = { uid: cred.user.uid, email: cred.user.email };
+
+      await pushAllLocalDataToCloud(user.uid);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      return user;
+    } catch (e) {
+      return rejectWithValue(e.message);
     }
+  }
 );
 
-// Login usuario
+/* ---------- LOGIN ---------- */
 export const login = createAsyncThunk(
-    'auth/login',
-    async ({ email, password }, { rejectWithValue }) => {
-        try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const uid = userCredential.user.uid;
-            const productos = await fetchUserProducts(uid);
+  'auth/login',
+  async ({ email, password }, { rejectWithValue }) => {
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const user = { uid: cred.user.uid, email: cred.user.email };
 
-            return {
-                uid,
-                email: userCredential.user.email,
-                productos, // datos serializables
-            };
-        } catch (error) {
-            return rejectWithValue(error.message);
-        }
+      await pullAllCloudDataToLocal(user.uid);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      return user;
+    } catch (e) {
+      return rejectWithValue(e.message);
     }
+  }
 );
 
-// Recuperar usuario de AsyncStorage al iniciar la app
+/* ---------- LOAD SESSION ---------- */
 export const loadUserFromStorage = createAsyncThunk(
-    'auth/loadUser',
-    async (_, { rejectWithValue }) => {
-        try {
-            const json = await AsyncStorage.getItem('user');
-            if (json) return JSON.parse(json);
-            return null;
-        } catch (error) {
-            return rejectWithValue(error.message);
-        }
-    }
+  'auth/loadUser',
+  async () => {
+    const json = await AsyncStorage.getItem('user');
+    return json ? JSON.parse(json) : null;
+  }
 );
 
-const authSlice = createSlice({
-    name: 'auth',
-    initialState: {
-        user: null,
-        loading: false,
-        error: null,
-    },
-    reducers: {
-        logout: (state) => {
-            state.user = null;
-            state.error = null;
-            AsyncStorage.removeItem('user');
-        },
-    },
-    extraReducers: (builder) => {
-        builder
-            // REGISTER
-            .addCase(register.pending, (state) => {
-                state.loading = true;
-                state.error = null;
-            })
-            .addCase(register.fulfilled, (state, action) => {
-                state.loading = false;
-                state.user = action.payload;
-            })
-            .addCase(register.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload;
-            })
-
-            // LOGIN
-            .addCase(login.pending, (state) => {
-                state.loading = true;
-                state.error = null;
-            })
-            .addCase(login.fulfilled, (state, action) => {
-                state.loading = false;
-                state.user = action.payload;
-            })
-            .addCase(login.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload;
-            })
-
-            // LOAD USER
-            .addCase(loadUserFromStorage.fulfilled, (state, action) => {
-                state.user = action.payload;
-            })
-            .addCase(loadUserFromStorage.rejected, (state) => {
-                state.user = null;
-            });
-    },
+/* ---------- LOGOUT ---------- */
+export const logoutUser = createAsyncThunk('auth/logout', async () => {
+  await signOut(auth);
+  await AsyncStorage.removeItem('user');
 });
 
-export const { logout } = authSlice.actions;
+const authSlice = createSlice({
+  name: 'auth',
+  initialState: {
+    user: null,
+    loading: false,
+    error: null,
+  },
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+
+      // REGISTER
+      .addCase(register.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(register.fulfilled, (s, a) => { s.loading = false; s.user = a.payload; })
+      .addCase(register.rejected, (s, a) => { s.loading = false; s.error = a.payload; })
+
+      // LOGIN
+      .addCase(login.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(login.fulfilled, (s, a) => { s.loading = false; s.user = a.payload; })
+      .addCase(login.rejected, (s, a) => { s.loading = false; s.error = a.payload; })
+
+      // LOAD
+      .addCase(loadUserFromStorage.fulfilled, (s, a) => { s.user = a.payload; })
+
+      // LOGOUT
+      .addCase(logoutUser.fulfilled, (s) => { s.user = null; });
+  },
+});
+
 export default authSlice.reducer;

@@ -16,9 +16,10 @@ import {
     deleteCategoryWithItems,
 } from '../db/database';
 import {
-    usePushCategoryMutation,
-    useDeleteCategoryRemoteMutation,
-} from '../services/firebaseApi';
+  usePushCategoryMutation,
+  useDeleteCategoryRemoteMutation,
+} from '../services/despensaApi';
+
 
 const COLORS = ['#1e90ff', '#ff4d4d', '#ff9800', '#4caf50', '#9c27b0'];
 
