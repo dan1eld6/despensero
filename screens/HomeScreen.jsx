@@ -98,16 +98,18 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.card}
-          onPress={() => navigation.navigate('Despensa', { screen: 'Scanner' })}
-        >
+  style={styles.card}
+  onPress={() => navigation.navigate('ScannerFromHome')}
+>
+
           <Text style={styles.cardTitle}>📷 Escanear producto</Text>
           <Text style={styles.cardSub}>Agregar o sumar stock automáticamente</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.card}
-          onPress={() => navigation.navigate('Despensa', { screen: 'AddEditItem' })}
+          onPress={() => navigation.navigate('QuickAddItem')}
+
         >
           <Text style={styles.cardTitle}>➕ Nuevo producto</Text>
           <Text style={styles.cardSub}>Carga manual rápida</Text>

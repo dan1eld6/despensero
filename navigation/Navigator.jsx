@@ -13,15 +13,17 @@ import LowStockScreen from '../screens/LowStockScreen';
 import ExpiringSoonScreen from '../screens/ExpiringSoonScreen';
 import ExpiredScreen from '../screens/ExpiredScreen';
 import LoginScreen from '../screens/LoginScreen';
+import QuickAddItemScreen from '../screens/QuickAddItemScreen';
 
 import { fetchLowStockItems } from '../db/database';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+/* ---------- DESPENSA STACK ---------- */
 function DespensaStack() {
   return (
-    <Stack.Navigator initialRouteName="Categories">
+    <Stack.Navigator>
       <Stack.Screen name="Categories" component={CategoriesScreen} options={{ title: 'Categorías' }} />
       <Stack.Screen name="Items" component={ItemsScreen} options={{ title: 'Productos' }} />
       <Stack.Screen name="AddEditItem" component={AddEditItemScreen} options={{ title: 'Agregar / Editar' }} />
@@ -33,7 +35,28 @@ function DespensaStack() {
   );
 }
 
-export default function Navigator() {
+/* ---------- HOME STACK ---------- */
+function HomeStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="HomeMain" component={HomeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ScannerFromHome" component={ScannerScreen} options={{ title: 'Escanear producto' }} />
+    </Stack.Navigator>
+  );
+}
+
+/* ---------- ROOT STACK ---------- */
+function RootStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs" component={MainTabs} />
+      <Stack.Screen name="QuickAddItem" component={QuickAddItemScreen} options={{ headerShown: true, title: 'Nuevo producto' }} />
+    </Stack.Navigator>
+  );
+}
+
+/* ---------- TABS ---------- */
+function MainTabs() {
   const [lowStockCount, setLowStockCount] = useState(0);
   const user = useSelector(state => state.auth.user);
 
@@ -51,19 +74,27 @@ export default function Navigator() {
   }, [user]);
 
   return (
+    <Tab.Navigator screenOptions={{ headerShown: false }}>
+      <Tab.Screen name="Home" component={HomeStack} />
+      <Tab.Screen
+        name="Despensa"
+        component={DespensaStack}
+        options={{
+          tabBarBadge: lowStockCount > 0 ? lowStockCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: 'red', color: 'white', fontWeight: '700' },
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+export default function Navigator() {
+  const user = useSelector(state => state.auth.user);
+
+  return (
     <NavigationContainer>
       {user ? (
-        <Tab.Navigator screenOptions={{ headerShown: false }}>
-          <Tab.Screen name="Home" component={HomeScreen} />
-          <Tab.Screen
-            name="Despensa"
-            component={DespensaStack}
-            options={{
-              tabBarBadge: lowStockCount > 0 ? lowStockCount : undefined,
-              tabBarBadgeStyle: { backgroundColor: 'red', color: 'white', fontWeight: '700' },
-            }}
-          />
-        </Tab.Navigator>
+        <RootStack />
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Login" component={LoginScreen} />
