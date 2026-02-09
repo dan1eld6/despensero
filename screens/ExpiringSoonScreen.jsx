@@ -1,14 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, Text, StyleSheet } from 'react-native';
+import { View, FlatList, StyleSheet, Text } from 'react-native';
 import ItemCard from '../components/ItemCard';
-import { fetchExpiringSoonItems, updateItemQuantity, deleteItem } from '../db/database';
+import { fetchAllItems, updateItemQuantity, deleteItem } from '../db/database';
+
+const getExpirationStatus = (dateStr) => {
+  if (!dateStr) return null;
+  const today = new Date();
+  const date = new Date(dateStr);
+  const diffDays = (date - today) / 86400000;
+
+  if (diffDays < 0) return 'expired';
+  if (diffDays <= 7) return 'soon';
+  return null;
+};
 
 const ExpiringSoonScreen = () => {
   const [items, setItems] = useState([]);
 
   const load = async () => {
-    const data = await fetchExpiringSoonItems(7);
-    setItems(data);
+    const all = await fetchAllItems();
+    const soon = all.filter(i => getExpirationStatus(i.expirationDate) === 'soon');
+    setItems(soon);
   };
 
   useEffect(() => {
@@ -20,14 +32,15 @@ const ExpiringSoonScreen = () => {
       <FlatList
         data={items}
         keyExtractor={i => i.id.toString()}
+        ListEmptyComponent={<Text style={styles.empty}>No hay productos por vencer 🎉</Text>}
         renderItem={({ item }) => (
           <ItemCard
             item={item}
-            onPlus={() => {
+            onInc={() => {
               updateItemQuantity(item.id, 1);
               load();
             }}
-            onMinus={() => {
+            onDec={() => {
               updateItemQuantity(item.id, -1);
               load();
             }}
@@ -46,4 +59,5 @@ export default ExpiringSoonScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 12, backgroundColor: '#f4f6fa' },
+  empty: { textAlign: 'center', marginTop: 40, color: '#777' },
 });

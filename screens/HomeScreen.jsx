@@ -5,16 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
   Platform,
   StatusBar,
 } from 'react-native';
-import {
-  fetchLowStockItems,
-  fetchTotalItemsCount,
-  fetchExpiredItems,
-  fetchExpiringSoonItems,
-} from '../db/database';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { fetchAllItems } from '../db/database';
 
 const HomeScreen = ({ navigation }) => {
   const [lowStockCount, setLowStockCount] = useState(0);
@@ -24,32 +19,54 @@ const HomeScreen = ({ navigation }) => {
 
   const hasShownAlert = useRef(false);
 
-  const load = async () => {
-    const low = await fetchLowStockItems();
-    const total = await fetchTotalItemsCount();
-    const expired = await fetchExpiredItems();
-    const soon = await fetchExpiringSoonItems(7);
+  const getExpirationStatus = (dateStr) => {
+    if (!dateStr) return null;
+    const today = new Date();
+    const date = new Date(dateStr);
+    const diffDays = (date - today) / 86400000;
 
-    setLowStockCount(low.length);
-    setTotalCount(total);
-    setExpiringCount(soon.length);
-    setExpiredCount(expired.length);
+    if (diffDays < 0) return 'expired';
+    if (diffDays <= 7) return 'soon';
+    return null;
+  };
+
+  const load = async () => {
+    const items = await fetchAllItems();
+
+    let low = 0;
+    let expired = 0;
+    let soon = 0;
+
+    for (const item of items) {
+      const qty = Number(item.quantity) || 0;
+      const min = Number(item.minStock) || 0;
+
+      if (min > 0 && qty <= min) low++;
+
+      const status = getExpirationStatus(item.expirationDate);
+      if (status === 'expired') expired++;
+      if (status === 'soon') soon++;
+    }
+
+    setTotalCount(items.length);
+    setLowStockCount(low);
+    setExpiredCount(expired);
+    setExpiringCount(soon);
 
     if (!hasShownAlert.current) {
-      if (expired.length > 0) {
-        Alert.alert('⚠ Productos vencidos', `Tenés ${expired.length} productos vencidos`);
-      } else if (soon.length > 0) {
-        Alert.alert('⏳ Próximos a vencer', `${soon.length} productos vencerán pronto`);
+      if (expired > 0) {
+        Alert.alert('⚠ Productos vencidos', `Tenés ${expired} productos vencidos`);
+      } else if (soon > 0) {
+        Alert.alert('⏳ Próximos a vencer', `${soon} productos vencerán pronto`);
       }
       hasShownAlert.current = true;
     }
   };
 
   useEffect(() => {
-  const unsubscribe = navigation.addListener('focus', load);
-  return unsubscribe;
-}, [navigation]);
-
+    const unsubscribe = navigation.addListener('focus', load);
+    return unsubscribe;
+  }, [navigation]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -98,10 +115,9 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-  style={styles.card}
-  onPress={() => navigation.navigate('ScannerFromHome')}
->
-
+          style={styles.card}
+          onPress={() => navigation.navigate('ScannerFromHome')}
+        >
           <Text style={styles.cardTitle}>📷 Escanear producto</Text>
           <Text style={styles.cardSub}>Agregar o sumar stock automáticamente</Text>
         </TouchableOpacity>
@@ -109,7 +125,6 @@ const HomeScreen = ({ navigation }) => {
         <TouchableOpacity
           style={styles.card}
           onPress={() => navigation.navigate('QuickAddItem')}
-
         >
           <Text style={styles.cardTitle}>➕ Nuevo producto</Text>
           <Text style={styles.cardSub}>Carga manual rápida</Text>

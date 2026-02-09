@@ -11,7 +11,9 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { fetchItemByBarcode, updateItemQuantity } from '../db/database';
 
-const ScannerScreen = ({ navigation }) => {
+const ScannerScreen = ({ navigation, route }) => {
+  const category = route.params?.category;
+
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [foundItem, setFoundItem] = useState(null);
@@ -29,10 +31,31 @@ const ScannerScreen = ({ navigation }) => {
 
       if (!existing) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
         Alert.alert(
           'Producto no encontrado',
-          'Primero tenés que agregar este producto desde Categorías / Productos para poder actualizar el stock.',
-          [{ text: 'OK', onPress: () => setScanned(false) }]
+          '¿Querés agregar este producto?',
+          [
+            { text: 'Cancelar', onPress: () => setScanned(false), style: 'cancel' },
+            {
+              text: 'Agregar',
+              onPress: () => {
+                if (!category) {
+                  Alert.alert(
+                    'Sin categoría',
+                    'Primero seleccioná una categoría para poder agregar el producto.'
+                  );
+                  setScanned(false);
+                  return;
+                }
+
+                navigation.replace('AddEditItem', {
+                  barcode: data,
+                  category,
+                });
+              },
+            },
+          ]
         );
         return;
       }

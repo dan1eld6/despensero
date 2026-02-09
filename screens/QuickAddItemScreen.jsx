@@ -17,8 +17,8 @@ export default function QuickAddItemScreen() {
 
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('1');
-  const [categoryId, setCategoryId] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
     loadCategories();
@@ -27,7 +27,7 @@ export default function QuickAddItemScreen() {
   const loadCategories = async () => {
     const data = await fetchCategories();
     setCategories(data);
-    if (data.length > 0) setCategoryId(data[0].id);
+    if (data.length > 0) setSelectedCategory(data[0]);
   };
 
   const save = async () => {
@@ -36,19 +36,24 @@ export default function QuickAddItemScreen() {
       return;
     }
 
-    if (!categoryId) {
+    if (!selectedCategory?.id) {
       Alert.alert('Sin categoría', 'Primero creá una categoría.');
       return;
     }
 
-    await insertItem({
-      name: name.trim(),
-      quantity: Number(quantity) || 1,
-      categoryId,
-    });
+    try {
+      await insertItem({
+        name: name.trim(),
+        quantity: Number(quantity) || 1,
+        categoryId: selectedCategory.id,
+      });
 
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    navigation.goBack();
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      navigation.goBack();
+    } catch (err) {
+      console.error('Error creando item:', err);
+      Alert.alert('Error', err.message || 'No se pudo crear el producto');
+    }
   };
 
   return (
@@ -77,14 +82,14 @@ export default function QuickAddItemScreen() {
           key={cat.id}
           style={[
             styles.categoryBtn,
-            categoryId === cat.id && styles.categorySelected,
+            selectedCategory?.id === cat.id && styles.categorySelected,
           ]}
-          onPress={() => setCategoryId(cat.id)}
+          onPress={() => setSelectedCategory(cat)}
         >
           <Text
             style={[
               styles.categoryText,
-              categoryId === cat.id && styles.categoryTextSelected,
+              selectedCategory?.id === cat.id && styles.categoryTextSelected,
             ]}
           >
             {cat.name}
@@ -93,26 +98,16 @@ export default function QuickAddItemScreen() {
       ))}
 
       <TouchableOpacity style={styles.saveBtn} onPress={save}>
-        <Text style={styles.saveText}>Guardar producto</Text>
+        <Text style={styles.saveText}>Continuar</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 20,
-  },
-  label: {
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 4,
-  },
+  container: { padding: 20 },
+  title: { fontSize: 22, fontWeight: '700', marginBottom: 20 },
+  label: { fontWeight: '600', marginTop: 12, marginBottom: 4 },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -126,16 +121,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     marginTop: 6,
   },
-  categorySelected: {
-    backgroundColor: '#4CAF50',
-  },
-  categoryText: {
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  categoryTextSelected: {
-    color: 'white',
-  },
+  categorySelected: { backgroundColor: '#4CAF50' },
+  categoryText: { textAlign: 'center', fontWeight: '600' },
+  categoryTextSelected: { color: 'white' },
   saveBtn: {
     backgroundColor: '#2196F3',
     padding: 14,

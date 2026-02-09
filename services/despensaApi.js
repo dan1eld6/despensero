@@ -1,56 +1,114 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { firebaseBaseQuery } from './firebaseBaseQuery';
+import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
+import { getAuth } from 'firebase/auth';
+import { getDatabase, ref, set, remove, get } from 'firebase/database';
+
+const getUid = () => {
+  const uid = getAuth().currentUser?.uid;
+  if (!uid) throw new Error('Usuario no autenticado');
+  return uid;
+};
 
 export const despensaApi = createApi({
-  reducerPath: 'api',
-  baseQuery: firebaseBaseQuery({
-    baseUrl: 'https://despensero-e5e41-default-rtdb.firebaseio.com/',
-  }),
+  reducerPath: 'despensaApi',
+  baseQuery: fakeBaseQuery(),
   tagTypes: ['Categories', 'Items'],
   endpoints: (builder) => ({
+    /* ---------- CATEGORIES ---------- */
+
     getCategories: builder.query({
-      query: (uid) => `users/${uid}/categories`,
-      transformResponse: (r) => r || {},
+      async queryFn() {
+        try {
+          const uid = getUid();
+          const db = getDatabase();
+          const snap = await get(ref(db, `users/${uid}/categories`));
+          return { data: snap.val() || {} };
+        } catch (error) {
+          return { error };
+        }
+      },
       providesTags: ['Categories'],
     }),
 
     pushCategory: builder.mutation({
-      query: ({ uid, id, ...data }) => ({
-        url: `users/${uid}/categories/${id}`,
-        method: 'PUT',
-        body: data,
-      }),
+      async queryFn({ id, ...data }) {
+        try {
+          const uid = getUid();
+          const db = getDatabase();
+          await set(ref(db, `users/${uid}/categories/${id}`), {
+            ...data,
+            items: data.items || null,
+          });
+          return { data: true };
+        } catch (error) {
+          return { error };
+        }
+      },
       invalidatesTags: ['Categories'],
     }),
 
     deleteCategoryRemote: builder.mutation({
-      query: ({ uid, id }) => ({
-        url: `users/${uid}/categories/${id}`,
-        method: 'DELETE',
-      }),
+      async queryFn(id) {
+        try {
+          const uid = getUid();
+          const db = getDatabase();
+          // 🔥 Borra categoría + items (cascada natural)
+          await remove(ref(db, `users/${uid}/categories/${id}`));
+          return { data: true };
+        } catch (error) {
+          return { error };
+        }
+      },
       invalidatesTags: ['Categories'],
     }),
 
-    getItems: builder.query({
-      query: (uid) => `users/${uid}/items`,
-      transformResponse: (r) => r || {},
+    /* ---------- ITEMS (NESTED BY CATEGORY) ---------- */
+
+    getItemsByCategory: builder.query({
+      async queryFn(categoryId) {
+        try {
+          const uid = getUid();
+          const db = getDatabase();
+          const snap = await get(
+            ref(db, `users/${uid}/categories/${categoryId}/items`)
+          );
+          return { data: snap.val() || {} };
+        } catch (error) {
+          return { error };
+        }
+      },
       providesTags: ['Items'],
     }),
 
     pushItem: builder.mutation({
-      query: ({ uid, id, ...data }) => ({
-        url: `users/${uid}/items/${id}`,
-        method: 'PUT',
-        body: data,
-      }),
+      async queryFn({ categoryId, id, ...data }) {
+        try {
+          const uid = getUid();
+          const db = getDatabase();
+          await set(
+            ref(db, `users/${uid}/categories/${categoryId}/items/${id}`),
+            data
+          );
+          return { data: true };
+        } catch (error) {
+          return { error };
+        }
+      },
       invalidatesTags: ['Items'],
     }),
 
     deleteItemRemote: builder.mutation({
-      query: ({ uid, id }) => ({
-        url: `users/${uid}/items/${id}`,
-        method: 'DELETE',
-      }),
+      async queryFn({ categoryId, id }) {
+        try {
+          const uid = getUid();
+          const db = getDatabase();
+          await remove(
+            ref(db, `users/${uid}/categories/${categoryId}/items/${id}`)
+          );
+          return { data: true };
+        } catch (error) {
+          return { error };
+        }
+      },
       invalidatesTags: ['Items'],
     }),
   }),
@@ -60,7 +118,7 @@ export const {
   useGetCategoriesQuery,
   usePushCategoryMutation,
   useDeleteCategoryRemoteMutation,
-  useGetItemsQuery,
+  useGetItemsByCategoryQuery,
   usePushItemMutation,
   useDeleteItemRemoteMutation,
 } = despensaApi;
