@@ -23,7 +23,7 @@ export const despensaApi = createApi({
           const snap = await get(ref(db, `users/${uid}/categories`));
           return { data: snap.val() || {} };
         } catch (error) {
-          return { error };
+          return { error: { message: error.message } };
         }
       },
       providesTags: ['Categories'],
@@ -40,7 +40,7 @@ export const despensaApi = createApi({
           });
           return { data: true };
         } catch (error) {
-          return { error };
+          return { error: { message: error.message } };
         }
       },
       invalidatesTags: ['Categories'],
@@ -49,19 +49,19 @@ export const despensaApi = createApi({
     deleteCategoryRemote: builder.mutation({
       async queryFn(id) {
         try {
+          if (!id || typeof id !== 'string') throw new Error('ID inválido');
           const uid = getUid();
           const db = getDatabase();
-          // 🔥 Borra categoría + items (cascada natural)
           await remove(ref(db, `users/${uid}/categories/${id}`));
           return { data: true };
         } catch (error) {
-          return { error };
+          return { error: { message: error.message } };
         }
       },
       invalidatesTags: ['Categories'],
     }),
 
-    /* ---------- ITEMS (NESTED BY CATEGORY) ---------- */
+    /* ---------- ITEMS ---------- */
 
     getItemsByCategory: builder.query({
       async queryFn(categoryId) {
@@ -73,7 +73,7 @@ export const despensaApi = createApi({
           );
           return { data: snap.val() || {} };
         } catch (error) {
-          return { error };
+          return { error: { message: error.message } };
         }
       },
       providesTags: ['Items'],
@@ -82,6 +82,7 @@ export const despensaApi = createApi({
     pushItem: builder.mutation({
       async queryFn({ categoryId, id, ...data }) {
         try {
+          if (!categoryId || !id) throw new Error('Datos incompletos');
           const uid = getUid();
           const db = getDatabase();
           await set(
@@ -90,7 +91,7 @@ export const despensaApi = createApi({
           );
           return { data: true };
         } catch (error) {
-          return { error };
+          return { error: { message: error.message } };
         }
       },
       invalidatesTags: ['Items'],
@@ -99,6 +100,7 @@ export const despensaApi = createApi({
     deleteItemRemote: builder.mutation({
       async queryFn({ categoryId, id }) {
         try {
+          if (!categoryId || !id) throw new Error('Datos incompletos');
           const uid = getUid();
           const db = getDatabase();
           await remove(
@@ -106,7 +108,7 @@ export const despensaApi = createApi({
           );
           return { data: true };
         } catch (error) {
-          return { error };
+          return { error: { message: error.message } };
         }
       },
       invalidatesTags: ['Items'],

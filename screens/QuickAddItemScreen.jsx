@@ -11,6 +11,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { fetchCategories, insertItem } from '../db/database';
 import { useNavigation } from '@react-navigation/native';
+import { usePushItemMutation } from '../services/despensaApi';
 
 export default function QuickAddItemScreen() {
   const navigation = useNavigation();
@@ -19,6 +20,8 @@ export default function QuickAddItemScreen() {
   const [quantity, setQuantity] = useState('1');
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+
+  const [pushItem] = usePushItemMutation();
 
   useEffect(() => {
     loadCategories();
@@ -41,12 +44,18 @@ export default function QuickAddItemScreen() {
       return;
     }
 
+    const payload = {
+      name: name.trim(),
+      quantity: Number(quantity) || 1,
+      categoryId: selectedCategory.id,
+    };
+
     try {
-      await insertItem({
-        name: name.trim(),
-        quantity: Number(quantity) || 1,
-        categoryId: selectedCategory.id,
-      });
+      // Insert en SQLite
+      const { id } = await insertItem(payload);
+
+      // Sincronización remota en Firebase
+      await pushItem({ ...payload, id });
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();

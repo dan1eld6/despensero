@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+
+import Ionicons from '@expo/vector-icons/Ionicons';
+
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
@@ -74,18 +77,32 @@ function MainTabs() {
   }, [user]);
 
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen
-        name="Despensa"
-        component={DespensaStack}
-        options={{
-          tabBarBadge: lowStockCount > 0 ? lowStockCount : undefined,
-          tabBarBadgeStyle: { backgroundColor: 'red', color: 'white', fontWeight: '700' },
-        }}
-      />
-    </Tab.Navigator>
-  );
+  <Tab.Navigator
+    screenOptions={({ route }) => ({
+      headerShown: false,
+      tabBarIcon: ({ color, size }) => {
+        let iconName;
+
+        if (route.name === 'Home') iconName = 'home-outline'; // <- ícono Home
+        else if (route.name === 'Despensa') iconName = 'basket-outline'; // <- ícono Despensa
+
+        return <Ionicons name={iconName} size={size} color={color} />;
+      },
+      tabBarActiveTintColor: '#1e90ff',
+      tabBarInactiveTintColor: 'gray',
+    })}
+  >
+    <Tab.Screen name="Home" component={HomeStack} />
+    <Tab.Screen
+      name="Despensa"
+      component={DespensaStack}
+      options={{
+        tabBarBadge: lowStockCount > 0 ? lowStockCount : undefined,
+        tabBarBadgeStyle: { backgroundColor: 'red', color: 'white', fontWeight: '700' },
+      }}
+    />
+  </Tab.Navigator>
+);
 }
 
 export default function Navigator() {
